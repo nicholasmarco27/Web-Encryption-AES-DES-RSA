@@ -47,6 +47,17 @@ def des_decrypt(encrypted_text, key):
     decrypted_data = unpad(cipher.decrypt(encrypted_text[DES.block_size:]), DES.block_size)
     return decrypted_data.decode('utf-8')
 
+@app.route('/')
+@app.route('/category/<category>')
+def notes_by_category(category='all'):  # Default kategori adalah 'all'
+    if category == 'all':
+        filtered_notes = notes
+    else:
+        filtered_notes = [note for note in notes if note['importance'] == category]
+    
+    return render_template('index.html', notes=filtered_notes, selected_category=category)
+
+
 # Route for index page
 @app.route('/')
 def index():
@@ -56,21 +67,39 @@ def index():
 @app.route('/view_note/<int:note_id>', methods=['GET', 'POST'])
 def view_note(note_id):
     note = notes[note_id]  # Ambil catatan berdasarkan ID
+    show_note_content = False  # Kontrol apakah konten ditampilkan atau tidak
+    edit_mode = False  # Kontrol apakah pengguna dalam mode edit
+
     if request.method == 'POST':
-        input_password = request.form['password']
-        # Cek apakah password yang dimasukkan benar
-        if note['importance'] == 'penting':
-            decrypted_password = aes_decrypt(note['encrypted_password'], input_password)
-        else:
-            decrypted_password = des_decrypt(note['encrypted_password'], input_password)
+        if 'password' in request.form:  # Verifikasi password
+            input_password = request.form['password']
+            # Cek apakah password yang dimasukkan benar
+            if note['importance'] == 'penting':
+                try:
+                    decrypted_password = aes_decrypt(note['encrypted_password'], input_password)
+                except:
+                    decrypted_password = None
+            else:
+                try:
+                    decrypted_password = des_decrypt(note['encrypted_password'], input_password)
+                except:
+                    decrypted_password = None
 
-        if decrypted_password == input_password:
-            return render_template('view_note.html', note=note, note_id=note_id)
-        else:
-            flash('Password yang anda masukkan salah, coba lagi.', 'danger')
-            return redirect(url_for('view_note', note_id=note_id))  # Redirect untuk menampilkan pesan flash
+            if decrypted_password == input_password:
+                show_note_content = True  # Set untuk menampilkan konten jika password benar
+                edit_mode = True  # Masuk mode edit
+            else:
+                flash('Password yang anda masukkan salah, coba lagi.', 'danger')
 
-    return render_template('view_note.html', note=None)
+        elif 'content' in request.form:  # Simpan perubahan catatan
+            new_content = request.form['content']
+            note['content'] = bleach.clean(new_content)  # Update catatan dengan konten baru
+            flash('Catatan berhasil diperbarui!', 'success')
+            return redirect(url_for('view_note', note_id=note_id))  # Redirect ke view_note setelah save
+
+    return render_template('view_note.html', note=note, show_note_content=show_note_content, edit_mode=edit_mode)
+
+
 
 
 # Route for creating/editing a note
@@ -115,9 +144,11 @@ def create_note(note_id=None):
             })
             flash(f"Catatan '{title}' berhasil dibuat dan terenkripsi!", "success")
 
-        return redirect(url_for('index'))
+        # Arahkan ke halaman utama setelah simpan catatan
+        return redirect(url_for('notes_by_category', category='all'))  # Redirect ke halaman 'All'
 
     return render_template('create_note.html', note=note)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

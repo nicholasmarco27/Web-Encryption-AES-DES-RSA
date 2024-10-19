@@ -7,6 +7,13 @@
     <title>{% if note %}Edit Catatan{% else %}Buat Catatan Baru{% endif %}</title>
 </head>
 <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-info">
+        <div class="container">
+            <a class="navbar-brand" href="#" style="font-weight: bold; color: azure;">SECURE NOTES</a>
+        </div>
+    </nav>
+
     <div class="container mt-5">
         <h1>{% if note %}Edit Catatan{% else %}Buat Catatan Baru{% endif %}</h1>
         <form method="POST">
