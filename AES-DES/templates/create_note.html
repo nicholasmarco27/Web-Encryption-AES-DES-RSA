@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>{% if note %}Edit Catatan{% else %}Buat Catatan Baru{% endif %}</title>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>{% if note %}Edit Catatan{% else %}Buat Catatan Baru{% endif %}</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="title">Judul Catatan</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ note.title if note else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="importance">Tingkat Kepentingan</label>
+                <select class="form-control" id="importance" name="importance" required>
+                    <option value="penting" {% if note and note.importance == 'penting' %}selected{% endif %}>Penting</option>
+                    <option value="biasa" {% if note and note.importance == 'biasa' %}selected{% endif %}>Biasa</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="content">Isi Catatan</label>
+                <textarea class="form-control" id="content" name="content" rows="5" required>{{ note.content if note else '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="password">Password untuk Mengamankan Catatan</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Simpan Catatan</button>
+        </form>
+    </div>
+</body>
+</html>
