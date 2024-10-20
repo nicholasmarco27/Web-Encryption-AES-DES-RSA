@@ -73,15 +73,18 @@ def view_note(note_id):
     if request.method == 'POST':
         if 'password' in request.form:  # Verifikasi password
             input_password = request.form['password']
+            # Balikkan password untuk dijadikan kunci
+            reversed_key = input_password[::-1]
+
             # Cek apakah password yang dimasukkan benar
             if note['importance'] == 'penting':
                 try:
-                    decrypted_password = aes_decrypt(note['encrypted_password'], input_password)
+                    decrypted_password = aes_decrypt(note['encrypted_password'], reversed_key)
                 except:
                     decrypted_password = None
             else:
                 try:
-                    decrypted_password = des_decrypt(note['encrypted_password'], input_password)
+                    decrypted_password = des_decrypt(note['encrypted_password'], reversed_key)
                 except:
                     decrypted_password = None
 
@@ -100,8 +103,6 @@ def view_note(note_id):
     return render_template('view_note.html', note=note, show_note_content=show_note_content, edit_mode=edit_mode)
 
 
-
-
 # Route for creating/editing a note
 @app.route('/create_note', methods=['GET', 'POST'])
 @app.route('/create_note/<int:note_id>', methods=['GET', 'POST'])
@@ -117,11 +118,14 @@ def create_note(note_id=None):
         content = bleach.clean(request.form['content'])
         password = request.form['password']
 
+        # Balikkan password untuk dijadikan kunci
+        reversed_key = password[::-1]  # Membalikkan password
+
         # Enkripsi password berdasarkan kepentingan catatan
         if importance == 'penting':
-            encrypted_password = aes_encrypt(password, password)
+            encrypted_password = aes_encrypt(password, reversed_key)
         else:
-            encrypted_password = des_encrypt(password, password)
+            encrypted_password = des_encrypt(password, reversed_key)
 
         if note_id is not None:  # Jika kita mengedit catatan yang ada
             # Update catatan yang ada
