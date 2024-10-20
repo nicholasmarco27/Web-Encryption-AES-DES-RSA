@@ -3,10 +3,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 import base64
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'
+app.secret_key = 'kelompok14'
 
 # Generate RSA keys
 private_key = rsa.generate_private_key(
@@ -15,6 +16,18 @@ private_key = rsa.generate_private_key(
     backend=default_backend()
 )
 public_key = private_key.public_key()
+
+# Route untuk menampilkan kunci publik
+@app.route('/show_public_key')
+def show_public_key():
+    # Mengonversi public key ke format PEM (untuk ditampilkan)
+    public_key_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')  # Ubah menjadi string yang bisa ditampilkan
+
+    # Tampilkan kunci publik di halaman
+    return f"<pre>{public_key_pem}</pre>"
 
 # Sample catalog
 # Sample catalog with description and image URL
