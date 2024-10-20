@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>View Note</title>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-info">
+        <div class="container">
+            <a class="navbar-brand" href="#" style="font-weight: bold; color: azure;">SECURE NOTES</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Form untuk Verifikasi Password -->
+        {% if not show_note_content %}
+        <div class="mt-4">
+            <h3>Masukkan Password untuk Mengedit:</h3>
+            <form method="POST">
+                <div class="form-group">
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-warning">Verifikasi dan Edit Catatan</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Konten Catatan, hanya ditampilkan jika password diverifikasi -->
+        {% if show_note_content %}
+            <div class="mt-5">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h2>{{ note.title }}</h2>
+                    </div>
+                    <div class="card-body">
+                        <!-- Form untuk mengedit catatan -->
+                        <form method="POST">
+                            <div class="form-group">
+                                <textarea class="form-control" id="content" name="content" rows="5" required>{{ note.content }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-success">Simpan Perubahan</button>
+                        </form>
+
+                        <h6 class="mt-4">Encrypted Password:</h6>
+                        <div class="border p-2 text-monospace bg-dark text-white rounded">
+                            {{ note.encrypted_password }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Tombol Kembali ke Home -->
+        <div class="mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-info">Kembali ke Home</a>
+        </div>
+    </div>
+</body>
+</html>
