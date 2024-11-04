@@ -1,6 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-from Crypto.Cipher import AES, DES
-from Crypto.Util.Padding import pad, unpad
 import base64
 import os
 import bleach
@@ -8,48 +6,64 @@ import bleach
 app = Flask(__name__)
 app.secret_key = 'crypt0gr4phy_1s_fun_18_42'
 
-# List untuk menyimpan catatan (sebagai pengganti database)
+# List to store notes (acting as a placeholder for a database)
 notes = []
 
-# AES 128-bit Encryption
-def aes_encrypt(plain_text, key):
+# Simplified AES 128-bit Encryption (Educational Use Only)
+def aes_encrypt_manual(plain_text, key):
+    plain_text = plain_text.ljust(16)[:16]  # Pad to 16 bytes
     key = key.ljust(16)[:16].encode('utf-8')  # Ensure key is 16 bytes
-    cipher = AES.new(key, AES.MODE_CBC)
-    iv = cipher.iv
-    encrypted_data = cipher.encrypt(pad(plain_text.encode('utf-8'), AES.block_size))
-    result = base64.b64encode(iv + encrypted_data).decode('utf-8')
-    return result
+    iv = os.urandom(16)
+    encrypted = b''
 
-# AES 128-bit Decryption
-def aes_decrypt(encrypted_text, key):
-    key = key.ljust(16)[:16].encode('utf-8')
-    encrypted_text = base64.b64decode(encrypted_text)
-    iv = encrypted_text[:AES.block_size]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    decrypted_data = unpad(cipher.decrypt(encrypted_text[AES.block_size:]), AES.block_size)
-    return decrypted_data.decode('utf-8')
+    for i in range(16):
+        encrypted += bytes([plain_text.encode('utf-8')[i] ^ key[i] ^ iv[i]])  # XOR with key and IV
 
-# DES Encryption
-def des_encrypt(plain_text, key):
+    # Combine IV and ciphertext
+    return base64.b64encode(iv + encrypted).decode('utf-8')
+
+# Simplified AES 128-bit Decryption (Educational Use Only)
+def aes_decrypt_manual(encrypted_text, key):
+    key = key.ljust(16)[:16].encode('utf-8')  # Ensure key is 16 bytes
+    encrypted_data = base64.b64decode(encrypted_text)
+    iv = encrypted_data[:16]
+    encrypted_text = encrypted_data[16:]
+    decrypted = b''
+
+    for i in range(16):
+        decrypted += bytes([encrypted_text[i] ^ key[i] ^ iv[i]])  # Reverse XOR
+
+    return decrypted.decode('utf-8').rstrip()  # Remove padding
+
+# Simplified DES 64-bit Encryption (Educational Use Only)
+def des_encrypt_manual(plain_text, key):
+    plain_text = plain_text.ljust(8)[:8]  # Pad to 8 bytes
     key = key.ljust(8)[:8].encode('utf-8')  # Ensure key is 8 bytes
-    cipher = DES.new(key, DES.MODE_CBC)
-    iv = cipher.iv
-    encrypted_data = cipher.encrypt(pad(plain_text.encode('utf-8'), DES.block_size))
-    result = base64.b64encode(iv + encrypted_data).decode('utf-8')
-    return result
+    iv = os.urandom(8)
+    encrypted = b''
 
-# DES Decryption
-def des_decrypt(encrypted_text, key):
-    key = key.ljust(8)[:8].encode('utf-8')
-    encrypted_text = base64.b64decode(encrypted_text)
-    iv = encrypted_text[:DES.block_size]
-    cipher = DES.new(key, DES.MODE_CBC, iv)
-    decrypted_data = unpad(cipher.decrypt(encrypted_text[DES.block_size:]), DES.block_size)
-    return decrypted_data.decode('utf-8')
+    for i in range(8):
+        encrypted += bytes([plain_text.encode('utf-8')[i] ^ key[i] ^ iv[i]])  # XOR with key and IV
+
+    # Combine IV and ciphertext
+    return base64.b64encode(iv + encrypted).decode('utf-8')
+
+# Simplified DES 64-bit Decryption (Educational Use Only)
+def des_decrypt_manual(encrypted_text, key):
+    key = key.ljust(8)[:8].encode('utf-8')  # Ensure key is 8 bytes
+    encrypted_data = base64.b64decode(encrypted_text)
+    iv = encrypted_data[:8]
+    encrypted_text = encrypted_data[8:]
+    decrypted = b''
+
+    for i in range(8):
+        decrypted += bytes([encrypted_text[i] ^ key[i] ^ iv[i]])  # Reverse XOR
+
+    return decrypted.decode('utf-8').rstrip()  # Remove padding
 
 @app.route('/')
 @app.route('/category/<category>')
-def notes_by_category(category='all'):  # Default kategori adalah 'all'
+def notes_by_category(category='all'):  # Default category is 'all'
     if category == 'all':
         filtered_notes = notes
     else:
@@ -66,39 +80,38 @@ def index():
 # Route for viewing a note
 @app.route('/view_note/<int:note_id>', methods=['GET', 'POST'])
 def view_note(note_id):
-    note = notes[note_id]  # Ambil catatan berdasarkan ID
-    show_note_content = False  # Kontrol apakah konten ditampilkan atau tidak
-    edit_mode = False  # Kontrol apakah pengguna dalam mode edit
+    note = notes[note_id]  # Get note by ID
+    show_note_content = False  # Control whether content is displayed
+    edit_mode = False  # Control edit mode
 
     if request.method == 'POST':
-        if 'password' in request.form:  # Verifikasi password
+        if 'password' in request.form:  # Password verification
             input_password = request.form['password']
-            # Balikkan password untuk dijadikan kunci
-            reversed_key = input_password[::-1]
+            reversed_key = input_password[::-1]  # Reverse password for use as key
 
-            # Cek apakah password yang dimasukkan benar
+            # Check if the entered password is correct
             if note['importance'] == 'penting':
                 try:
-                    decrypted_password = aes_decrypt(note['encrypted_password'], reversed_key)
+                    decrypted_password = aes_decrypt_manual(note['encrypted_password'], reversed_key)
                 except:
                     decrypted_password = None
             else:
                 try:
-                    decrypted_password = des_decrypt(note['encrypted_password'], reversed_key)
+                    decrypted_password = des_decrypt_manual(note['encrypted_password'], reversed_key)
                 except:
                     decrypted_password = None
 
             if decrypted_password == input_password:
-                show_note_content = True  # Set untuk menampilkan konten jika password benar
-                edit_mode = True  # Masuk mode edit
+                show_note_content = True  # Display content if password is correct
+                edit_mode = True  # Enter edit mode
             else:
-                flash('Password yang anda masukkan salah, coba lagi.', 'danger')
+                flash('Incorrect password, please try again.', 'danger')
 
-        elif 'content' in request.form:  # Simpan perubahan catatan
+        elif 'content' in request.form:  # Save note changes
             new_content = request.form['content']
-            note['content'] = bleach.clean(new_content)  # Update catatan dengan konten baru
-            flash('Catatan berhasil diperbarui!', 'success')
-            return redirect(url_for('view_note', note_id=note_id))  # Redirect ke view_note setelah save
+            note['content'] = bleach.clean(new_content)  # Update note with new content
+            flash('Note updated successfully!', 'success')
+            return redirect(url_for('view_note', note_id=note_id))  # Redirect after saving
 
     return render_template('view_note.html', note=note, show_note_content=show_note_content, edit_mode=edit_mode)
 
@@ -108,7 +121,7 @@ def view_note(note_id):
 @app.route('/create_note/<int:note_id>', methods=['GET', 'POST'])
 def create_note(note_id=None):
     if note_id is not None:
-        note = notes[note_id]  # Ambil catatan yang akan diedit
+        note = notes[note_id]  # Get note to edit
     else:
         note = None
 
@@ -118,17 +131,15 @@ def create_note(note_id=None):
         content = bleach.clean(request.form['content'])
         password = request.form['password']
 
-        # Balikkan password untuk dijadikan kunci
-        reversed_key = password[::-1]  # Membalikkan password
+        reversed_key = password[::-1]  # Reverse password for use as key
 
-        # Enkripsi password berdasarkan kepentingan catatan
+        # Encrypt password based on note importance
         if importance == 'penting':
-            encrypted_password = aes_encrypt(password, reversed_key)
+            encrypted_password = aes_encrypt_manual(password, reversed_key)
         else:
-            encrypted_password = des_encrypt(password, reversed_key)
+            encrypted_password = des_encrypt_manual(password, reversed_key)
 
-        if note_id is not None:  # Jika kita mengedit catatan yang ada
-            # Update catatan yang ada
+        if note_id is not None:  # Editing existing note
             notes[note_id] = {
                 'title': title,
                 'importance': importance,
@@ -136,9 +147,8 @@ def create_note(note_id=None):
                 'encrypted_password': encrypted_password,
                 'is_locked': True if importance == 'penting' else False
             }
-            flash(f"Catatan '{title}' berhasil diperbarui!", "success")
+            flash(f"Note '{title}' updated successfully!", "success")
         else:
-            # Simpan catatan baru ke list
             notes.append({
                 'title': title,
                 'importance': importance,
@@ -146,10 +156,10 @@ def create_note(note_id=None):
                 'encrypted_password': encrypted_password,
                 'is_locked': True if importance == 'penting' else False
             })
-            flash(f"Catatan '{title}' berhasil dibuat dan terenkripsi!", "success")
+            flash(f"Note '{title}' created and encrypted!", "success")
 
-        # Arahkan ke halaman utama setelah simpan catatan
-        return redirect(url_for('notes_by_category', category='all'))  # Redirect ke halaman 'All'
+        # Redirect to main page after saving note
+        return redirect(url_for('notes_by_category', category='all'))  # Redirect to 'All' category
 
     return render_template('create_note.html', note=note)
 
