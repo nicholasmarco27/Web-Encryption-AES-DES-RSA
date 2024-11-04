@@ -163,6 +163,15 @@ def create_note(note_id=None):
 
     return render_template('create_note.html', note=note)
 
+# Route for deleting a note
+@app.route('/delete_note/<int:note_id>', methods=['POST'])
+def delete_note(note_id):
+    if 0 <= note_id < len(notes):  # Ensure note_id is within the range of the notes list
+        notes.pop(note_id)  # Remove the note from the list
+        flash('Note deleted successfully', 'success')
+    else:
+        flash('Note not found', 'danger')
+    return redirect(url_for('notes_by_category', category='all'))
 
 if __name__ == '__main__':
     app.run(debug=True)
