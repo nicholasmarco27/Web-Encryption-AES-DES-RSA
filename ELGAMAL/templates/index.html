@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Techly</title>
+    <!-- Link ke Font Awesome untuk ikon keranjang -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Sticky header */
+        .sticky-header {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            background-color: #FFFFFF; /* Warna putih */
+            z-index: 1000;
+            padding: 20px 0; /* Tambahkan padding lebih besar */
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        /* Flexbox untuk menyelaraskan logo dan tombol keranjang */
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Menyelaraskan secara vertikal */
+        }
+
+        /* Styling untuk logo Techly */
+        .logo {
+            font-family: 'Arial', sans-serif; /* Font modern */
+            font-size: 36px; /* Ukuran besar */
+            font-weight: 700; /* Tebal */
+            color: #343a40; /* Warna teks */
+            letter-spacing: 2px; /* Jarak antar huruf */
+            text-transform: uppercase; /* Huruf kapital semua */
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Efek bayangan teks */
+        }
+
+        .cart-info a {
+            color: white;
+            background-color: #28a745; /* Tetap hijau untuk tombol keranjang */
+            padding: 10px 20px; /* Perbesar padding tombol */
+            border-radius: 5px;
+            text-decoration: none;
+            display: flex; /* Flexbox untuk menampung ikon dan angka */
+            align-items: center; /* Vertikal sejajar */
+        }
+
+        .cart-info a:hover {
+            background-color: #218838; /* Warna hover lebih gelap */
+            text-decoration: none;
+        }
+
+        .cart-info i {
+            margin-right: 10px; /* Spasi antara ikon dan jumlah item */
+        }
+
+        /* Margin antara header dan konten */
+        .content-grid {
+            margin-top: 40px;
+        }
+
+        /* Styling untuk grid produk */
+        .card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Footer styling */
+        footer {
+            background-color: #f8f9fa;
+            color: black;
+            padding: 10px 0;
+            text-align: center;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sticky Header -->
+    <div class="sticky-header">
+        <div class="container header-content">
+            <h1 class="logo">Techly</h1> <!-- Ubah logo menjadi Techly dengan styling -->
+            <div class="cart-info">
+                <a href="{{ url_for('cart') }}">
+                    <!-- Ikon keranjang dan jumlah item -->
+                    <i class="fas fa-shopping-cart"></i> 
+                    <span id="cart-count">2</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Konten katalog produk -->
+    <div class="container content-grid">
+        <div class="row">
+            {% for item in catalog %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <img src="{{ url_for('static', filename=item.image) }}" class="card-img-top" alt="{{ item.name }}">
+                    <div class="card-body">
+                        <h3 class="card-title">{{ item.name }}</h3>
+                        <p class="card-text">{{ item.description }}</p>
+                        <p class="card-text"><strong>Price: ${{ item.price }}</strong></p>
+                        <button class="btn btn-primary add-to-cart" data-id="{{ item.id }}">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        Kelompok 14 Kriptografi B
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            function updateCartCount() {
+                $.get("/cart_count", function(data) {
+                    $("#cart-count").text(data.count);
+                });
+            }
+
+            updateCartCount(); // Update jumlah item di cart saat halaman dimuat
+
+            // Add to cart via AJAX
+            $(".add-to-cart").click(function(){
+                var itemId = $(this).data("id");
+                $.post("/add_to_cart/" + itemId, function() {
+                    alert("Item added to cart!");
+                    updateCartCount(); // Update jumlah item setelah menambah ke cart
+                });
+            });
+        });
+    </script>
+</body>
+</html>
