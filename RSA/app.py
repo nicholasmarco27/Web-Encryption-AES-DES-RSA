@@ -1,13 +1,13 @@
 import base64
 import random
 from flask import Flask, render_template, request, redirect, url_for, session
+import time
 
 app = Flask(__name__)
 app.secret_key = 'kelompok14'
 
-# Simplified RSA key generation for educational purposes
+
 def generate_rsa_keys():
-    # Simple prime numbers for demonstration (NOT SECURE)
     p = 61
     q = 53
     n = p * q
@@ -20,23 +20,29 @@ def generate_rsa_keys():
     d = pow(e, -1, phi)
     
     return (e, n), (d, n)
+ 
 
-# Encrypt function that returns Base64 encoded string
 def rsa_encrypt(plaintext, public_key):
     e, n = public_key
+    start_time = time.perf_counter()
+    
+    # Encrypt each character as a separate integer
     encrypted_data = [pow(ord(char), e, n) for char in plaintext]
     
-    # Convert each encrypted integer to bytes and then encode in Base64
-    encrypted_bytes = b''.join(enc_val.to_bytes((enc_val.bit_length() + 7) // 8, 'big') for enc_val in encrypted_data)
-    base64_encoded = base64.b64encode(encrypted_bytes).decode('utf-8')
-    return base64_encoded
+    end_time = time.perf_counter()
+    encryption_time = end_time - start_time
+    
+    # Return the list of encrypted integers directly, no need to encode in Base64
+    return encrypted_data, encryption_time
 
-# Decrypt function
 def rsa_decrypt(encrypted_data, private_key):
     d, n = private_key
-    # Decrypt each character
+    
+    # Decrypt each integer and convert back to characters
     decrypted_data = ''.join(chr(pow(char, d, n)) for char in encrypted_data)
+    
     return decrypted_data
+
 
 # Generate RSA keys
 public_key, private_key = generate_rsa_keys()
@@ -85,7 +91,6 @@ def remove_from_cart(item_id):
         session['cart'] = cart
     return redirect(url_for('cart'))
 
-# Route for checkout with manual RSA encryption
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     if request.method == 'POST':
@@ -95,20 +100,42 @@ def checkout():
         expiry_date = request.form['expiry_date']
         cvc = request.form['cvc']
         
-        # Encrypt sensitive information manually and encode in Base64
-        encrypted_credit_card = rsa_encrypt(credit_card, public_key)
-        encrypted_expiry_date = rsa_encrypt(expiry_date, public_key)
-        encrypted_cvc = rsa_encrypt(cvc, public_key)
+        # Encrypt with RSA and measure encryption time
+        encrypted_credit_card_rsa, credit_card_time_rsa = rsa_encrypt(credit_card, public_key)
+        encrypted_expiry_date_rsa, expiry_date_time_rsa = rsa_encrypt(expiry_date, public_key)
+        encrypted_cvc_rsa, cvc_time_rsa = rsa_encrypt(cvc, public_key)
         
+        # Decrypt the encrypted information to verify
+        decrypted_credit_card_rsa = rsa_decrypt(encrypted_credit_card_rsa, private_key)
+        decrypted_expiry_date_rsa = rsa_decrypt(encrypted_expiry_date_rsa, private_key)
+        decrypted_cvc_rsa = rsa_decrypt(encrypted_cvc_rsa, private_key)
+        
+        # Format encryption times as decimal values with 6 decimal places
+        encryption_times_rsa = {
+            'credit_card_time': f"{credit_card_time_rsa:.6f}",
+            'expiry_date_time': f"{expiry_date_time_rsa:.6f}",
+            'cvc_time': f"{cvc_time_rsa:.6f}"
+        }
+
+        # Pass encrypted data, decrypted data, and encryption times to the template
         return render_template('checkout.html', 
-                               encrypted_payment={
-                                   'credit_card': encrypted_credit_card,
-                                   'expiry_date': encrypted_expiry_date,
-                                   'cvc': encrypted_cvc
-                               }, 
+                               encrypted_payment_rsa={
+                                   'credit_card': encrypted_credit_card_rsa,
+                                   'expiry_date': encrypted_expiry_date_rsa,
+                                   'cvc': encrypted_cvc_rsa
+                               },
+                               decrypted_payment_rsa={
+                                   'credit_card': decrypted_credit_card_rsa,
+                                   'expiry_date': decrypted_expiry_date_rsa,
+                                   'cvc': decrypted_cvc_rsa
+                               },
+                               encryption_times_rsa=encryption_times_rsa, 
                                name=name, address=address)
     
     return render_template('checkout.html')
+
+
+
 
 @app.route('/clear_cart')
 def clear_cart():

@@ -1,54 +1,55 @@
-import base64
 import random
-from flask import Flask, render_template, request, redirect, url_for, session
+import time
+from flask import Flask, render_template, request, session, redirect, url_for
+from math import gcd
 
 app = Flask(__name__)
 app.secret_key = 'kelompok14'
 
-# Simplified ElGamal key generation for educational purposes
+
 def generate_elgamal_keys():
-    # Small prime and generator for demonstration (NOT SECURE)
-    p = 467  # Prime number (in practice, this should be large)
-    g = 2    # Generator (primitive root modulo p)
-    
-    # Private key is a random integer less than p
+    p = 467  # Small prime for demonstration only 
+    g = 2    # Generator
     private_key = random.randint(2, p - 2)
-    
-    # Public key is (p, g, g^private_key mod p)
     public_key = (p, g, pow(g, private_key, p))
-    
     return public_key, private_key
 
-# Encrypt function that returns Base64 encoded string
+# Encrypt function with retry for invertibility issues
 def elgamal_encrypt(plaintext, public_key):
     p, g, h = public_key
     encrypted_data = []
+
+    # Start timing encryption
+    start_time = time.perf_counter()
     
     for char in plaintext:
-        k = random.randint(1, p - 2)  # Random ephemeral key
-        c1 = pow(g, k, p)
-        c2 = (ord(char) * pow(h, k, p)) % p
-        encrypted_data.append((c1, c2))
+        while True:  # Retry if s is not invertible
+            k = random.randint(1, p - 2)  # Random ephemeral key
+            c1 = pow(g, k, p)
+            s = pow(h, k, p)
+            if gcd(s, p) == 1:  # Ensure s and p are coprime
+                c2 = (ord(char) * s) % p
+                encrypted_data.append((c1, c2))
+                break
     
-    # Convert pairs to bytes and encode in Base64
-    encrypted_bytes = b''.join(c1.to_bytes((c1.bit_length() + 7) // 8, 'big') + c2.to_bytes((c2.bit_length() + 7) // 8, 'big') for c1, c2 in encrypted_data)
-    base64_encoded = base64.b64encode(encrypted_bytes).decode('utf-8')
-    return base64_encoded
+    # End timing encryption
+    end_time = time.perf_counter()
+    encryption_time = end_time - start_time  # Calculate encryption time
+    
+    return encrypted_data, encryption_time  # Return encrypted data and time
 
-# Decrypt function
+# Decrypt function to handle list of (c1, c2) pairs with modular inverse check
 def elgamal_decrypt(encrypted_data, public_key, private_key):
     p, g, h = public_key
-    encrypted_bytes = base64.b64decode(encrypted_data)
     decrypted_data = ''
     
-    # Each character has two parts, c1 and c2
-    for i in range(0, len(encrypted_bytes), 4):
-        c1 = int.from_bytes(encrypted_bytes[i:i+2], 'big')
-        c2 = int.from_bytes(encrypted_bytes[i+2:i+4], 'big')
+    for c1, c2 in encrypted_data:
         s = pow(c1, private_key, p)
+        if gcd(s, p) != 1:  # If s and p are not coprime, skip this decryption step
+            raise ValueError("Modular inverse does not exist for this value, decryption failed.")
         s_inv = pow(s, -1, p)  # Modular inverse of s
-        decrypted_char = (c2 * s_inv) % p
-        decrypted_data += chr(decrypted_char)
+        decrypted_char = chr((c2 * s_inv) % p)  # Convert back to character
+        decrypted_data += decrypted_char  # Append each character to the result string
     
     return decrypted_data
 
@@ -99,28 +100,43 @@ def remove_from_cart(item_id):
         session['cart'] = cart
     return redirect(url_for('cart'))
 
-# Route for checkout with manual ElGamal encryption
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     if request.method == 'POST':
         name = request.form['name']
         address = request.form['address']
-        credit_card = request.form['credit_card']
+        credit_card = request.form['credit_card']  # Capture credit card as plain text
         expiry_date = request.form['expiry_date']
         cvc = request.form['cvc']
         
-        # Encrypt sensitive information manually and encode in Base64
-        encrypted_credit_card = elgamal_encrypt(credit_card, public_key)
-        encrypted_expiry_date = elgamal_encrypt(expiry_date, public_key)
-        encrypted_cvc = elgamal_encrypt(cvc, public_key)
+        # Encrypt expiry_date and cvc, and record encryption times
+        encrypted_expiry_date, expiry_date_time = elgamal_encrypt(expiry_date, public_key)
+        encrypted_cvc, cvc_time = elgamal_encrypt(cvc, public_key)
         
+        # Decrypt the encrypted information
+        decrypted_expiry_date = elgamal_decrypt(encrypted_expiry_date, public_key, private_key)
+        decrypted_cvc = elgamal_decrypt(encrypted_cvc, public_key, private_key)
+        
+        # Format encryption times as decimal values with 6 decimal places
+        encryption_times = {
+            'expiry_date_time': f"{expiry_date_time:.6f}",
+            'cvc_time': f"{cvc_time:.6f}"
+        }
+
+        # Passing encrypted, decrypted, and other payment info to the template
         return render_template('checkout.html', 
                                encrypted_payment={
-                                   'credit_card': encrypted_credit_card,
                                    'expiry_date': encrypted_expiry_date,
                                    'cvc': encrypted_cvc
-                               }, 
-                               name=name, address=address)
+                               },
+                               decrypted_payment={
+                                   'expiry_date': decrypted_expiry_date,
+                                   'cvc': decrypted_cvc
+                               },
+                               encryption_times=encryption_times, 
+                               name=name, 
+                               address=address, 
+                               credit_card=credit_card)  # Pass credit card to template
     
     return render_template('checkout.html')
 
@@ -132,7 +148,6 @@ def clear_cart():
 # Route to show the public key for reference
 @app.route('/show_public_key')
 def show_public_key():
-    # Display public key in a readable format
     return f"<pre>Public Key (p, g, h): {public_key}</pre>"
 
 if __name__ == '__main__':
