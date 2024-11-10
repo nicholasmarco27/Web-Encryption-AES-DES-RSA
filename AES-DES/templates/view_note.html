@@ -15,7 +15,6 @@
     </nav>
 
     <div class="container mt-5">
-        <!-- Form untuk Verifikasi Password -->
         {% if not show_note_content %}
         <div class="mt-4">
             <h3>Masukkan Password untuk Mengedit:</h3>
@@ -27,37 +26,54 @@
             </form>
         </div>
         {% endif %}
-
-        <!-- Konten Catatan, hanya ditampilkan jika password diverifikasi -->
+    
         {% if show_note_content %}
-            <div class="mt-5">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-info text-white">
-                        <h2>{{ note.title }}</h2>
-                    </div>
-                    <div class="card-body">
-                        <!-- Form untuk mengedit catatan -->
-                        <form method="POST">
-                            <div class="form-group">
-                                <textarea class="form-control" id="content" name="content" rows="5" required>{{ note.content }}</textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-success">Simpan Perubahan</button>
-                        </form>
-
-                        <h6 class="mt-4">Encrypted Password:</h6>
-                        <div class="border p-2 text-monospace bg-dark text-white rounded">
-                            {{ note.encrypted_password }}
+        <div class="mt-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h2>{{ note.title }}</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Content Editing Form -->
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="content">Isi Catatan:</label>
+                            <textarea class="form-control" id="content" name="content" rows="5" required>{{ decrypted_content | safe }}</textarea>
                         </div>
+                        <button type="submit" class="btn btn-success">Simpan Perubahan</button>
+                    </form>
+
+                    <!-- Encrypted Password -->
+                    <h6 class="mt-4">Encrypted Password:</h6>
+                    <div class="border p-2 text-monospace bg-dark text-white rounded">
+                        {{ note.encrypted_password }}
+                    </div>
+                    
+                    <!-- Decrypted Password -->
+                    <h6 class="mt-4">Decrypted Password:</h6>
+                    <div class="border p-2 text-monospace bg-dark text-white rounded">
+                        {{ decrypted_password }}
+                    </div>
+    
+                    <!-- Encrypted Content -->
+                    <h6 class="mt-4">Encrypted Content:</h6>
+                    <div class="border p-2 text-monospace bg-dark text-white rounded">
+                        {{ note.encrypted_content }}
+                    </div>
+    
+                    <!-- Decrypted Content -->
+                    <h6 class="mt-4">Decrypted Content:</h6>
+                    <div class="border p-2 text-monospace bg-dark text-white rounded">
+                        {{ decrypted_content | safe }}
                     </div>
                 </div>
             </div>
+        </div>
         {% endif %}
-
-        <!-- Tombol Kembali ke Home -->
+    
         <div class="mt-4">
             <a href="{{ url_for('index') }}" class="btn btn-info">Kembali ke Home</a>
         </div>
-    </div>
+    </div>    
 </body>
 </html>
