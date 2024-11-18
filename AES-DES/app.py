@@ -9,20 +9,25 @@ app.secret_key = 'crypt0gr4phy_1s_fun_18_42'
 # List to store notes (acting as a placeholder for a database)
 notes = []
 
-# Simplified AES 128-bit Encryption (Educational Use Only)
+import base64
+import os
+
+# AES Encryption
 def aes_encrypt_manual(plain_text, key):
-    plain_text = plain_text.ljust(16)[:16]  # Pad to 16 bytes
+    # Ensure text is padded to 16 bytes (AES block size)
+    padding_len = 16 - len(plain_text) % 16
+    plain_text = plain_text + chr(padding_len) * padding_len  # Pad text to make it a multiple of 16
     key = key.ljust(16)[:16].encode('utf-8')  # Ensure key is 16 bytes
     iv = os.urandom(16)
     encrypted = b''
 
-    for i in range(16):
-        encrypted += bytes([plain_text.encode('utf-8')[i] ^ key[i] ^ iv[i]])  # XOR with key and IV
+    for i in range(len(plain_text)):
+        encrypted += bytes([ord(plain_text[i]) ^ key[i % 16] ^ iv[i % 16]])
 
-    # Combine IV and ciphertext
+    # Combine IV and ciphertext and encode to base64
     return base64.b64encode(iv + encrypted).decode('utf-8')
 
-# Simplified AES 128-bit Decryption (Educational Use Only)
+# AES Decryption
 def aes_decrypt_manual(encrypted_text, key):
     key = key.ljust(16)[:16].encode('utf-8')  # Ensure key is 16 bytes
     encrypted_data = base64.b64decode(encrypted_text)
@@ -30,25 +35,31 @@ def aes_decrypt_manual(encrypted_text, key):
     encrypted_text = encrypted_data[16:]
     decrypted = b''
 
-    for i in range(16):
-        decrypted += bytes([encrypted_text[i] ^ key[i] ^ iv[i]])  # Reverse XOR
+    for i in range(len(encrypted_text)):
+        decrypted += bytes([encrypted_text[i] ^ key[i % 16] ^ iv[i % 16]])
 
-    return decrypted.decode('utf-8').rstrip()  # Remove padding
+    decrypted = decrypted.decode('utf-8')
 
-# Simplified DES 64-bit Encryption (Educational Use Only)
+    # Remove PKCS7 padding
+    padding_len = ord(decrypted[-1])  # Get padding length
+    return decrypted[:-padding_len]  # Remove padding
+
+# DES Encryption
 def des_encrypt_manual(plain_text, key):
-    plain_text = plain_text.ljust(8)[:8]  # Pad to 8 bytes
+    # Ensure text is padded to 8 bytes (DES block size)
+    padding_len = 8 - len(plain_text) % 8
+    plain_text = plain_text + chr(padding_len) * padding_len  # Pad text to make it a multiple of 8
     key = key.ljust(8)[:8].encode('utf-8')  # Ensure key is 8 bytes
     iv = os.urandom(8)
     encrypted = b''
 
-    for i in range(8):
-        encrypted += bytes([plain_text.encode('utf-8')[i] ^ key[i] ^ iv[i]])  # XOR with key and IV
+    for i in range(len(plain_text)):
+        encrypted += bytes([ord(plain_text[i]) ^ key[i % 8] ^ iv[i % 8]])
 
-    # Combine IV and ciphertext
+    # Combine IV and ciphertext and encode to base64
     return base64.b64encode(iv + encrypted).decode('utf-8')
 
-# Simplified DES 64-bit Decryption (Educational Use Only)
+# DES Decryption
 def des_decrypt_manual(encrypted_text, key):
     key = key.ljust(8)[:8].encode('utf-8')  # Ensure key is 8 bytes
     encrypted_data = base64.b64decode(encrypted_text)
@@ -56,10 +67,14 @@ def des_decrypt_manual(encrypted_text, key):
     encrypted_text = encrypted_data[8:]
     decrypted = b''
 
-    for i in range(8):
-        decrypted += bytes([encrypted_text[i] ^ key[i] ^ iv[i]])  # Reverse XOR
+    for i in range(len(encrypted_text)):
+        decrypted += bytes([encrypted_text[i] ^ key[i % 8] ^ iv[i % 8]])
 
-    return decrypted.decode('utf-8').rstrip()  # Remove padding
+    decrypted = decrypted.decode('utf-8')
+
+    # Remove PKCS7 padding
+    padding_len = ord(decrypted[-1])  # Get padding length
+    return decrypted[:-padding_len]  # Remove padding
 
 @app.route('/')
 @app.route('/category/<category>')
@@ -80,70 +95,84 @@ def index():
 # Route for viewing a note
 @app.route('/view_note/<int:note_id>', methods=['GET', 'POST'])
 def view_note(note_id):
-    note = notes[note_id]  # Get note by ID
-    show_note_content = False  # Control whether content is displayed
-    edit_mode = False  # Control edit mode
+    note = notes[note_id]
+    show_note_content = False
+    edit_mode = False
+    decrypted_content = None
+    decrypted_password = None  # Initialize decrypted_password here
 
     if request.method == 'POST':
-        if 'password' in request.form:  # Password verification
+        if 'password' in request.form:
             input_password = request.form['password']
-            reversed_key = input_password[::-1]  # Reverse password for use as key
+            reversed_key = input_password[::-1]
 
-            # Check if the entered password is correct
             if note['importance'] == 'penting':
-                try:
-                    decrypted_password = aes_decrypt_manual(note['encrypted_password'], reversed_key)
-                except:
-                    decrypted_password = None
+                decrypted_password = aes_decrypt_manual(note['encrypted_password'], reversed_key)
+                decrypted_content = aes_decrypt_manual(note['encrypted_content'], reversed_key)
             else:
-                try:
-                    decrypted_password = des_decrypt_manual(note['encrypted_password'], reversed_key)
-                except:
-                    decrypted_password = None
+                decrypted_password = des_decrypt_manual(note['encrypted_password'], reversed_key)
+                decrypted_content = des_decrypt_manual(note['encrypted_content'], reversed_key)
 
             if decrypted_password == input_password:
-                show_note_content = True  # Display content if password is correct
-                edit_mode = True  # Enter edit mode
+                show_note_content = True
+                edit_mode = True
             else:
                 flash('Incorrect password, please try again.', 'danger')
+                # After flashing, ensure that the view_note page is rendered again
+                return render_template(
+                    'view_note.html', 
+                    note=note, 
+                    decrypted_password=decrypted_password,
+                    decrypted_content=decrypted_content, 
+                    show_note_content=show_note_content, 
+                    edit_mode=edit_mode
+                )
 
-        elif 'content' in request.form:  # Save note changes
+        elif 'content' in request.form:
             new_content = request.form['content']
-            note['content'] = bleach.clean(new_content)  # Update note with new content
+            note['content'] = bleach.clean(new_content)
             flash('Note updated successfully!', 'success')
-            return redirect(url_for('view_note', note_id=note_id))  # Redirect after saving
+            return redirect(url_for('view_note', note_id=note_id))
 
-    return render_template('view_note.html', note=note, show_note_content=show_note_content, edit_mode=edit_mode)
-
+    return render_template(
+        'view_note.html', 
+        note=note, 
+        decrypted_password=decrypted_password,
+        decrypted_content=decrypted_content, 
+        show_note_content=show_note_content, 
+        edit_mode=edit_mode
+    )
 
 # Route for creating/editing a note
 @app.route('/create_note', methods=['GET', 'POST'])
 @app.route('/create_note/<int:note_id>', methods=['GET', 'POST'])
 def create_note(note_id=None):
     if note_id is not None:
-        note = notes[note_id]  # Get note to edit
+        note = notes[note_id]
     else:
         note = None
 
     if request.method == 'POST':
         title = bleach.clean(request.form['title'])
         importance = request.form['importance']
-        content = bleach.clean(request.form['content'])
+        content = request.form['content']
         password = request.form['password']
 
-        reversed_key = password[::-1]  # Reverse password for use as key
+        reversed_key = password[::-1]
 
-        # Encrypt password based on note importance
+        # Encrypt password and content based on importance
         if importance == 'penting':
             encrypted_password = aes_encrypt_manual(password, reversed_key)
+            encrypted_content = aes_encrypt_manual(content, reversed_key)
         else:
             encrypted_password = des_encrypt_manual(password, reversed_key)
+            encrypted_content = des_encrypt_manual(content, reversed_key)
 
-        if note_id is not None:  # Editing existing note
+        if note_id is not None:
             notes[note_id] = {
                 'title': title,
                 'importance': importance,
-                'content': content,
+                'encrypted_content': encrypted_content,
                 'encrypted_password': encrypted_password,
                 'is_locked': True if importance == 'penting' else False
             }
@@ -152,14 +181,13 @@ def create_note(note_id=None):
             notes.append({
                 'title': title,
                 'importance': importance,
-                'content': content,
+                'encrypted_content': encrypted_content,
                 'encrypted_password': encrypted_password,
                 'is_locked': True if importance == 'penting' else False
             })
             flash(f"Note '{title}' created and encrypted!", "success")
 
-        # Redirect to main page after saving note
-        return redirect(url_for('notes_by_category', category='all'))  # Redirect to 'All' category
+        return redirect(url_for('notes_by_category', category='all'))
 
     return render_template('create_note.html', note=note)
 
