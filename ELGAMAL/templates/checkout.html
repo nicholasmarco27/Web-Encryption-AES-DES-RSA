@@ -35,10 +35,12 @@
 
                         <!-- Display Encryption Times -->
                         <div class="mt-4">
-                            <h5>Encryption Times</h5>
+                            <h5>Encryption Details</h5>
                             <ul>
-                                <li><strong>Expiry Date Encryption Time:</strong> {{ encryption_times.expiry_date_time }} seconds</li>
-                                <li><strong>CVC Encryption Time:</strong> {{ encryption_times.cvc_time }} seconds</li>
+                                <li><strong>Expiry Date Encryption Time:</strong> {{ encryption_details.expiry_date_time }} seconds</li>
+                                <li><strong>Expiry Date Memory Used:</strong> {{ encryption_details.expiry_date_memory }} KB</li>
+                                <li><strong>CVC Encryption Time:</strong> {{ encryption_details.cvc_time }} seconds</li>
+                                <li><strong>CVC Memory Used:</strong> {{ encryption_details.cvc_memory }} KB</li>
                             </ul>
                         </div>
                     </div>

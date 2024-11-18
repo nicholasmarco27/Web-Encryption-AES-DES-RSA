@@ -1,76 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container my-5">
-        <h1 class="text-center mb-4">Checkout</h1>
-
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                {% if encrypted_payment_rsa %}
-                    <div class="alert alert-success">
-                        <h4>Your payment has been processed!</h4>
-                        <p><strong>Name:</strong> {{ name }}</p>
-                        <p><strong>Address:</strong> {{ address }}</p>
-                        
-                        <h5>Encrypted Information (RSA)</h5>
-                        <p><strong>Credit Card Encrypted:</strong> {{ encrypted_payment_rsa['credit_card'] }}</p>
-                        <p><strong>Expiry Date Encrypted:</strong> {{ encrypted_payment_rsa['expiry_date'] }}</p>
-                        <p><strong>CVC Encrypted:</strong> {{ encrypted_payment_rsa['cvc'] }}</p>
-
-                        <h5 class="mt-4">Decrypted Information (RSA)</h5>
-                        <p><strong>Credit Card Decrypted:</strong> {{ decrypted_payment_rsa['credit_card'] }}</p>
-                        <p><strong>Expiry Date Decrypted:</strong> {{ decrypted_payment_rsa['expiry_date'] }}</p>
-                        <p><strong>CVC Decrypted:</strong> {{ decrypted_payment_rsa['cvc'] }}</p>
-
-                        <!-- Display Encryption Times -->
-                        <div class="mt-4">
-                            <h5>Encryption Times</h5>
-                            <ul>
-                                <li><strong>Credit Card Encryption Time:</strong> {{ encryption_times_rsa.credit_card_time }} seconds</li>
-                                <li><strong>Expiry Date Encryption Time:</strong> {{ encryption_times_rsa.expiry_date_time }} seconds</li>
-                                <li><strong>CVC Encryption Time:</strong> {{ encryption_times_rsa.cvc_time }} seconds</li>
-                            </ul>
-                        </div>
-                    </div>
-                {% else %}
-                    <form method="POST">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <input type="text" class="form-control" id="address" name="address" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="credit_card" class="form-label">Credit Card Number</label>
-                            <input type="text" class="form-control" id="credit_card" name="credit_card" required>
-                        </div>
-                        <div class="mb-3 row">
-                            <div class="col">
-                                <label for="expiry_date" class="form-label">Expiry Date (MMYY)</label>
-                                <input type="text" class="form-control" id="expiry_date" name="expiry_date" required>
-                            </div>
-                            <div class="col">
-                                <label for="cvc" class="form-label">CVC</label>
-                                <input type="text" class="form-control" id="cvc" name="cvc" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Submit Payment</button>
-                    </form>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="mt-4 text-center">
-            <a href="{{ url_for('cart') }}" class="btn btn-secondary">Back to Cart</a>
-        </div>
-    </div>
-</body>
-</html>
+<div class="mt-4">
+    <h5>Encryption Details (RSA)</h5>
+    <ul>
+        <li><strong>Credit Card Encryption Time:</strong> {{ encryption_details_rsa.credit_card_time }}</li>
+        <li><strong>Credit Card Memory Used:</strong> {{ encryption_details_rsa.credit_card_memory }}</li>
+        <li><strong>Expiry Date Encryption Time:</strong> {{ encryption_details_rsa.expiry_date_time }}</li>
+        <li><strong>Expiry Date Memory Used:</strong> {{ encryption_details_rsa.expiry_date_memory }}</li>
+        <li><strong>CVC Encryption Time:</strong> {{ encryption_details_rsa.cvc_time }}</li>
+        <li><strong>CVC Memory Used:</strong> {{ encryption_details_rsa.cvc_memory }}</li>
+    </ul>
+</div>

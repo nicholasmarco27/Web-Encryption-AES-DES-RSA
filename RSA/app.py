@@ -2,10 +2,10 @@ import base64
 import random
 from flask import Flask, render_template, request, redirect, url_for, session
 import time
+import tracemalloc  # Import for memory tracking
 
 app = Flask(__name__)
 app.secret_key = 'kelompok14'
-
 
 def generate_rsa_keys():
     p = 61
@@ -24,24 +24,34 @@ def generate_rsa_keys():
 
 def rsa_encrypt(plaintext, public_key):
     e, n = public_key
+    tracemalloc.start()  # Start memory tracking
     start_time = time.perf_counter()
     
     # Encrypt each character as a separate integer
     encrypted_data = [pow(ord(char), e, n) for char in plaintext]
     
     end_time = time.perf_counter()
-    encryption_time = end_time - start_time
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()  # Stop memory tracking
     
-    # Return the list of encrypted integers directly, no need to encode in Base64
-    return encrypted_data, encryption_time
+    encryption_time = end_time - start_time
+    memory_used = peak - current  # Peak memory usage during encryption
+    
+    # Return the list of encrypted integers, time, and memory usage
+    return encrypted_data, encryption_time, memory_used
 
 def rsa_decrypt(encrypted_data, private_key):
     d, n = private_key
+    tracemalloc.start()  # Start memory tracking
     
     # Decrypt each integer and convert back to characters
     decrypted_data = ''.join(chr(pow(char, d, n)) for char in encrypted_data)
     
-    return decrypted_data
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()  # Stop memory tracking
+    
+    memory_used = peak - current  # Peak memory usage during decryption
+    return decrypted_data, memory_used
 
 
 # Generate RSA keys
@@ -100,24 +110,27 @@ def checkout():
         expiry_date = request.form['expiry_date']
         cvc = request.form['cvc']
         
-        # Encrypt with RSA and measure encryption time
-        encrypted_credit_card_rsa, credit_card_time_rsa = rsa_encrypt(credit_card, public_key)
-        encrypted_expiry_date_rsa, expiry_date_time_rsa = rsa_encrypt(expiry_date, public_key)
-        encrypted_cvc_rsa, cvc_time_rsa = rsa_encrypt(cvc, public_key)
+        # Encrypt with RSA and measure encryption time and memory
+        encrypted_credit_card_rsa, credit_card_time_rsa, credit_card_memory_rsa = rsa_encrypt(credit_card, public_key)
+        encrypted_expiry_date_rsa, expiry_date_time_rsa, expiry_date_memory_rsa = rsa_encrypt(expiry_date, public_key)
+        encrypted_cvc_rsa, cvc_time_rsa, cvc_memory_rsa = rsa_encrypt(cvc, public_key)
         
-        # Decrypt the encrypted information to verify
-        decrypted_credit_card_rsa = rsa_decrypt(encrypted_credit_card_rsa, private_key)
-        decrypted_expiry_date_rsa = rsa_decrypt(encrypted_expiry_date_rsa, private_key)
-        decrypted_cvc_rsa = rsa_decrypt(encrypted_cvc_rsa, private_key)
+        # Decrypt the encrypted information to verify and measure memory
+        decrypted_credit_card_rsa, credit_card_memory_used = rsa_decrypt(encrypted_credit_card_rsa, private_key)
+        decrypted_expiry_date_rsa, expiry_date_memory_used = rsa_decrypt(encrypted_expiry_date_rsa, private_key)
+        decrypted_cvc_rsa, cvc_memory_used = rsa_decrypt(encrypted_cvc_rsa, private_key)
         
-        # Format encryption times as decimal values with 6 decimal places
-        encryption_times_rsa = {
-            'credit_card_time': f"{credit_card_time_rsa:.6f}",
-            'expiry_date_time': f"{expiry_date_time_rsa:.6f}",
-            'cvc_time': f"{cvc_time_rsa:.6f}"
+        # Format encryption and memory usage as decimal values
+        encryption_details_rsa = {
+            'credit_card_time': f"{credit_card_time_rsa:.6f} seconds",
+            'credit_card_memory': f"{credit_card_memory_rsa / 1024:.2f} KB",
+            'expiry_date_time': f"{expiry_date_time_rsa:.6f} seconds",
+            'expiry_date_memory': f"{expiry_date_memory_rsa / 1024:.2f} KB",
+            'cvc_time': f"{cvc_time_rsa:.6f} seconds",
+            'cvc_memory': f"{cvc_memory_rsa / 1024:.2f} KB",
         }
 
-        # Pass encrypted data, decrypted data, and encryption times to the template
+        # Pass encrypted data, decrypted data, and encryption times/memory to the template
         return render_template('checkout.html', 
                                encrypted_payment_rsa={
                                    'credit_card': encrypted_credit_card_rsa,
@@ -129,13 +142,10 @@ def checkout():
                                    'expiry_date': decrypted_expiry_date_rsa,
                                    'cvc': decrypted_cvc_rsa
                                },
-                               encryption_times_rsa=encryption_times_rsa, 
+                               encryption_details_rsa=encryption_details_rsa, 
                                name=name, address=address)
     
     return render_template('checkout.html')
-
-
-
 
 @app.route('/clear_cart')
 def clear_cart():
@@ -145,7 +155,6 @@ def clear_cart():
 # Route to show the public key for reference
 @app.route('/show_public_key')
 def show_public_key():
-    # Display public key in a readable format
     return f"<pre>Public Key (e, n): {public_key}</pre>"
 
 if __name__ == '__main__':
