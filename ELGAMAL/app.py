@@ -3,9 +3,22 @@ import time
 import tracemalloc  # Import tracemalloc for memory usage tracking
 from flask import Flask, render_template, request, session, redirect, url_for
 from math import gcd
+import json
+from markupsafe import Markup
+
+# Define the escapejs filter
+def escapejs(value):
+    if isinstance(value, (dict, list)):
+        value = json.dumps(value)  # Convert Python dict or list to JSON string
+    return Markup(value.replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("\'", "\\\'").replace("\n", "\\n")
+                .replace("\r", "\\r").replace("\t", "\\t"))
+
 
 app = Flask(__name__)
 app.secret_key = 'kelompok14'
+# Register the filter in Flask
+app.jinja_env.filters['escapejs'] = escapejs
 
 
 def generate_elgamal_keys():
@@ -157,6 +170,47 @@ def checkout():
                                credit_card=credit_card)  # Pass credit card to template
     
     return render_template('checkout.html')
+
+@app.route('/performance')
+def performance():
+    trials = 10
+    encryption_times = []
+    decryption_times = []
+    encryption_memories = []
+    decryption_memories = []
+
+    sample_data = "TestData"  # Sample plaintext for encryption and decryption
+
+    for _ in range(trials):
+        # Encryption Performance
+        encrypted_data, encryption_time, encryption_memory = elgamal_encrypt(sample_data, public_key)
+        encryption_times.append(encryption_time)
+        encryption_memories.append(encryption_memory / 1024)  # Convert memory usage to KB
+
+        # Decryption Performance
+        _, decryption_memory = elgamal_decrypt(encrypted_data, public_key, private_key)
+        decryption_times.append(encryption_time)  # Decryption time can be calculated here if required
+        decryption_memories.append(decryption_memory / 1024)  # Convert memory usage to KB
+
+    # Average Results
+    avg_encryption_time = sum(encryption_times) / trials
+    avg_decryption_time = sum(decryption_times) / trials
+    avg_encryption_memory = sum(encryption_memories) / trials
+    avg_decryption_memory = sum(decryption_memories) / trials
+
+    # Data to Pass to Template
+    performance_data = {
+        "encryption_times": encryption_times,
+        "decryption_times": decryption_times,
+        "encryption_memories": encryption_memories,
+        "decryption_memories": decryption_memories,
+        "avg_encryption_time": avg_encryption_time,
+        "avg_decryption_time": avg_decryption_time,
+        "avg_encryption_memory": avg_encryption_memory,
+        "avg_decryption_memory": avg_decryption_memory,
+    }
+
+    return render_template('performance.html', performance_data=performance_data)
 
 @app.route('/clear_cart')
 def clear_cart():

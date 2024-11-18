@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center mb-4"> RSA Performance Analysis</h1>
+
+        <h3>Execution Time (Seconds)</h3>
+        <canvas id="timeChart" width="400" height="200"></canvas>
+        
+        <h3>Memory Usage (KB)</h3>
+        <canvas id="memoryChart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        const performanceData = JSON.parse('{{ performance_data|tojson|escapejs }}');
+        const trials = Array.from({ length: performanceData.encryption_times.length }, (_, i) => i + 1);
+
+        // Execution Time Chart
+        new Chart(document.getElementById('timeChart'), {
+            type: 'line',
+            data: {
+                labels: trials,
+                datasets: [
+                    {
+                        label: 'Encryption Time (s)',
+                        data: performanceData.encryption_times,
+                        borderColor: 'blue',
+                        fill: false
+                    },
+                    {
+                        label: 'Decryption Time (s)',
+                        data: performanceData.decryption_times,
+                        borderColor: 'green',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Execution Time Analysis'
+                    }
+                }
+            }
+        });
+
+        // Memory Usage Chart
+        new Chart(document.getElementById('memoryChart'), {
+            type: 'line',
+            data: {
+                labels: trials,
+                datasets: [
+                    {
+                        label: 'Encryption Memory (KB)',
+                        data: performanceData.encryption_memories,
+                        borderColor: 'red',
+                        fill: false
+                    },
+                    {
+                        label: 'Decryption Memory (KB)',
+                        data: performanceData.decryption_memories,
+                        borderColor: 'orange',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Memory Usage Analysis'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
